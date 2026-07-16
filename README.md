@@ -7,16 +7,19 @@ dashboard for the mentor.
 
 ## How it works
 
-- Anyone opens the app to a single **phone number** screen. The app looks
-  the number up: a mentor/admin gets a normal magic-link sign-in email
-  (they have a real account with edit privileges, so they still need to
-  prove they own that inbox); a convert is dropped **straight into their
-  `/watch/<token>` page immediately, with no email step at all** — their
-  token isn't a real login, just an unguessable ID for their own page, so
-  there's nothing to gain by making them wait on an inbox. Nobody ever sees
-  who a number belongs to just by typing it in.
+- Anyone opens the app to a single **phone number** screen, with a second
+  field for a **mentor/admin code** (a PIN you choose and hand out verbally
+  — see setup step 1.6). A mentor/admin enters their phone number and that
+  code; if it matches, the app signs them straight in, no email, no
+  clicking anything. A convert is dropped **straight into their
+  `/watch/<token>` page immediately** by phone number alone — their token
+  isn't a real login, just an unguessable ID for their own page. Nobody
+  ever sees who a phone number belongs to just by typing it in, and a wrong
+  code looks identical to a number that isn't in the system at all.
 - A brand-new mentor (whose phone isn't in the system yet) signs in with
-  email instead, the first time only, from the "sign in with email" link.
+  email instead, the first time only, from the "sign in with email" link —
+  after that first sign-in they're in the `mentors` table and can use the
+  phone + code screen like everyone else.
 - The mentor adds a new convert: name, phone, email, and a start date.
 - Every day, a scheduled job finds anyone whose day 0-40 lands on today, and
   emails them that day's lesson with a link to their personal page.
@@ -103,12 +106,18 @@ SMS later.
    sending Gmail account, then visit
    [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
    and create one for "Mail". You'll get a 16-character password.
-6. Set the functions' secrets (shared by all three functions):
+6. Set the functions' secrets:
    ```
    supabase secrets set GMAIL_USER=youraddress@gmail.com
    supabase secrets set GMAIL_APP_PASSWORD=xxxxxxxxxxxxxxxx
    supabase secrets set APP_BASE_URL=https://your-app.netlify.app
+   supabase secrets set MENTOR_SIGN_IN_CODE=0608
    ```
+   `MENTOR_SIGN_IN_CODE` is the shared PIN every mentor and admin types in
+   alongside their phone number instead of clicking an emailed link — hand
+   it out verbally to whoever you bring on as a mentor. Change it any time
+   with the same command (no redeploy needed); anyone who still has the old
+   one just won't be able to sign in until you tell them the new one.
 7. Open `supabase/migrations/0002_cron.sql`, replace the two placeholders
    (project ref and service role key, both found in **Project Settings →
    API**), and run it in the SQL editor. This schedules the email job to run
@@ -177,17 +186,18 @@ npm run dev
   Edge Function.
 - No SMS. If you later get a Twilio account, the convert's `phone` field is
   already stored and ready to use.
-- For mentors/admins, the phone-number front door identifies *which
-  account* to email, but the actual proof of identity is still "you clicked
-  the magic link in that account's email" — same trust level as before,
-  just reached by typing a phone number instead of an email address. For
-  converts there's no proof-of-identity step at all: typing in a phone
-  number that matches a convert drops you straight into that convert's
-  watch page. That's an intentional trade for zero-friction daily use, but
-  it does mean anyone who knows (or guesses) a convert's phone number can
-  see their progress and mark days watched. If that ever matters more than
-  the friction it'd add, the fix is a real SMS one-time code (needs Twilio)
-  gating the convert path too.
+- **Neither mentors/admins nor converts have real per-person verification
+  at the phone-number front door anymore.** Mentors/admins prove they
+  belong by knowing the shared `MENTOR_SIGN_IN_CODE` PIN — anyone who has
+  that code and knows (or guesses) a mentor's phone number can sign in as
+  that mentor, with full edit/admin power if that mentor is an admin.
+  Converts have no code at all: typing in a phone number that matches a
+  convert drops you straight into that convert's watch page. Both are
+  intentional trades for zero-friction daily use with a small, trusted
+  group — worth revisiting if the group grows past "everyone who has the
+  code is someone you trust with everyone else's data." The natural
+  upgrade for either is a real per-person SMS one-time code (needs
+  Twilio) instead of a shared PIN.
 - A phone number can only belong to one mentor/admin (enforced by a unique
   index), so if two mentors ever shared a number, the second one to sign up
   would hit a database error — worth knowing before onboarding a large team.

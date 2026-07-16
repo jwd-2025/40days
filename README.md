@@ -98,6 +98,29 @@ everyone. So phone number collection was dropped entirely
 instead of two. If you want to text people yourself, or wire up real SMS
 later, you'd need to re-add a phone field to the intake forms first.
 
+## Why the day number in an email could disagree with the watch page
+
+There's exactly one place that decides "what day is it for this convert":
+today's date minus their start date, clamped to 0-40. Before `0007`, that
+was computed three different ways in three different places:
+
+- `send-daily-videos` (which decides which day's email to send) computed
+  it in JavaScript using UTC.
+- `get_convert_view` (which decides what the watch page shows) computed it
+  in SQL using plain `current_date` - whatever timezone the database
+  session happens to be in, not necessarily UTC.
+- The dashboard's "Day X of 40" display computed it in JavaScript using
+  the browser's local timezone.
+
+For several hours around midnight UTC, those could disagree by exactly one
+day - e.g. the email correctly says "Day 1," but the link in that email,
+clicked a little while later, still shows Day 0, because the database's
+notion of "today" hadn't rolled over yet by its own timezone. `0007` makes
+`get_convert_view` compute "today" the same explicit way the email job
+does (UTC), and `src/lib/progress.ts`'s `elapsedDay()` (used for the
+dashboard displays) was changed to match. There's now only one definition
+of "what day is it" anywhere in the app.
+
 ## One-time setup
 
 ### 1. Supabase (database + auth + the daily email job)
@@ -107,7 +130,8 @@ later, you'd need to re-add a phone field to the intake forms first.
 2. In the SQL editor, run, in order: `supabase/migrations/0001_init.sql`,
    then `0002_cron.sql` (after step 7 below), then
    `0003_admin_and_phone_lookup.sql`, then `0004_free_video_source.sql`,
-   then `0005_delete_convert.sql`, then `0006_drop_phone.sql`.
+   then `0005_delete_convert.sql`, then `0006_drop_phone.sql`, then
+   `0007_fix_day_timezone_mismatch.sql`.
    `0001` creates the tables, security rules, and seeds the 41 videos;
    `0003` adds the admin flag (its phone-lookup columns get removed again
    by `0006` below, but running it in order keeps the migration history
@@ -116,7 +140,10 @@ later, you'd need to re-add a phone field to the intake forms first.
    adds the function that lets a mentor delete their own convert (or an
    admin delete anyone's); `0006` drops phone-number support entirely and
    switches the front-door lookup to email (see "Why email, not SMS or
-   phone numbers at all" above).
+   phone numbers at all" above); `0007` fixes a bug where the day number in
+   a lesson email could disagree with the day shown on the watch page (see
+   "Why the day number in an email could disagree with the watch page"
+   below).
 3. In **Authentication → Providers**, make sure **Email** is enabled, and
    under **Authentication → URL Configuration** set the Site URL to your
    Netlify URL once you have it (step 3 below) so magic links redirect

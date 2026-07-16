@@ -3,11 +3,15 @@ export interface ProgressRow {
   watched_at: string | null
 }
 
+// Computed in UTC (not the browser's local timezone) so this always agrees
+// with the daily email job (send-daily-videos, which is also UTC-based) and
+// with the database's own get_convert_view. Using local time here used to
+// let the dashboard's "Day X" and the emailed "Day X" drift apart by a day
+// for anyone outside UTC, especially for a few hours around midnight.
 export function elapsedDay(startDate: string): number {
-  const start = new Date(startDate + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  start.setHours(0, 0, 0, 0)
+  const start = new Date(startDate + 'T00:00:00Z')
+  const todayUtc = new Date().toISOString().slice(0, 10)
+  const today = new Date(todayUtc + 'T00:00:00Z')
   const diff = Math.floor((today.getTime() - start.getTime()) / 86_400_000)
   return Math.min(Math.max(diff, 0), 40)
 }

@@ -1,10 +1,7 @@
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
-import { supabase } from './lib/supabaseClient'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSession } from './lib/useSession'
 import { useMentorProfile } from './lib/useMentorProfile'
 import FrontDoor from './pages/FrontDoor'
-import MentorLogin from './pages/MentorLogin'
 import MentorDashboard from './pages/MentorDashboard'
 import AddConvert from './pages/AddConvert'
 import ConvertProgress from './pages/ConvertProgress'
@@ -31,63 +28,23 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
   return children
 }
 
-/**
- * Runs once, app-wide, whenever someone gets signed in. There are two ways
- * that happens:
- *   1. The front door's shared code (FrontDoor.tsx calls setSession()
- *      directly) - FrontDoor already knows the role from identify-role's
- *      response and navigates itself, immediately, with no extra queries.
- *   2. Clicking the magic link from "create your account" (MentorLogin) -
- *      this always lands back on "/", and nothing else on that page knows
- *      the role yet, so THIS is what has to look it up and navigate.
- *
- * Both cases fire the same SIGNED_IN event, so without a guard this would
- * also run its (slower - upsert, then a separate query) navigate for case
- * 1, racing FrontDoor's own immediate navigate and usually winning because
- * it finishes last, bouncing an admin from /admin back to /dashboard right
- * after they land there. The pathname check below is that guard: by the
- * time this async chain finishes, FrontDoor's own navigate has already
- * moved case 1 off of "/", so only case 2 (still sitting on "/") proceeds.
- */
-function useAuthBootstrap() {
-  const navigate = useNavigate()
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const storedName = localStorage.getItem('pending_mentor_name') ?? ''
-        await supabase.from('mentors').upsert(
-          {
-            auth_user_id: session.user.id,
-            email: session.user.email,
-            name: storedName || undefined,
-          },
-          { onConflict: 'auth_user_id', ignoreDuplicates: false },
-        )
-        localStorage.removeItem('pending_mentor_name')
-
-        // See the note above - only the "just clicked a magic link" case
-        // still needs this component to decide where to go.
-        if (window.location.pathname !== '/') return
-
-        const { data: mentor } = await supabase
-          .from('mentors')
-          .select('is_admin')
-          .eq('auth_user_id', session.user.id)
-          .single()
-        navigate(mentor?.is_admin ? '/admin' : '/dashboard')
-      }
-    })
-    return () => listener.subscription.unsubscribe()
-  }, [navigate])
-}
+// There used to be a self-serve "create your account" flow (a magic-link
+// form any visitor could fill in), plus a separate app-wide listener here
+// that reacted to that sign-in and decided where to route someone. Both
+// are gone now - mentor/admin accounts are only ever created by an admin
+// (see FrontDoor.tsx's "add a mentor or admin" and MentorDashboard.tsx),
+// which means the `mentors` row and its auth account always exist *before*
+// anyone signs in. So the only sign-in path left is the front door's
+// shared code (FrontDoor.tsx calls setSession() directly and navigates
+// itself immediately, already knowing the role from identify-role's
+// response), and the "already have a session" case (FrontDoor's own
+// useEffect redirects a returning, still-signed-in visitor away from the
+// front door screen). Neither needs anything extra done here.
 
 export default function App() {
-  useAuthBootstrap()
-
   return (
     <Routes>
       <Route path="/" element={<FrontDoor />} />
-      <Route path="/email-login" element={<MentorLogin />} />
       <Route
         path="/dashboard"
         element={

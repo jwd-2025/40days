@@ -16,18 +16,16 @@ dashboard for the mentor.
   their token isn't a real login, just an unguessable ID for their own
   page. Nobody ever sees who an email belongs to just by typing it in, and
   a wrong code looks identical to an email that isn't in the system at all.
-- **Adding a mentor or admin.** An admin sees a "+ Add a mentor or admin"
-  button right on their own `/dashboard` (no need to go anywhere else):
-  name, email, and a checkbox for whether they're an admin. This creates
-  the account and `mentors` row right then and there — no invite email, no
-  waiting. They can sign in immediately from the front door with that
-  email + the shared mentor/admin code. The same form also exists on
-  `/admin`, which admins can still reach via a "Full admin tools" link on
-  their dashboard, for the other management actions (reassign, deactivate,
-  delete). (There's also a "create your account" self-serve link on the
-  front door for a mentor to add themselves via a one-time emailed link,
-  in case you'd rather they set themselves up than do it for them - either
-  path ends at the same place.)
+- **Adding a mentor or admin.** There's no self-signup anywhere in this
+  app - the only way to become a mentor or admin is for an existing admin
+  to add you. An admin sees a "+ Add a mentor or admin" button right on
+  their own `/dashboard` (no need to go anywhere else): name, email, and a
+  checkbox for whether they're an admin. This creates the account and
+  `mentors` row right then and there — no invite email, no waiting. They
+  can sign in immediately from the front door with that email + the shared
+  mentor/admin code. The same form also exists on `/admin`, which admins
+  can still reach via a "Full admin tools" link on their dashboard, for
+  the other management actions (reassign, deactivate, delete).
 - The mentor adds a new convert: name, email, and a start date. If that
   start date is today or earlier, their first lesson email goes out
   immediately (same send as a manual resend) instead of waiting for the
@@ -158,10 +156,21 @@ below the video still reflects their actual progress either way.
    a lesson email could disagree with the day shown on the watch page (see
    "Why the day number in an email could disagree with the watch page"
    below).
-3. In **Authentication → Providers**, make sure **Email** is enabled, and
-   under **Authentication → URL Configuration** set the Site URL to your
-   Netlify URL once you have it (step 3 below) so magic links redirect
-   correctly.
+3. In **Authentication → Providers**, make sure **Email** is enabled (the
+   front door's sign-in still runs on Supabase's email-based auth under the
+   hood, even though no email actually gets sent for it - see "How it
+   works" above). Under **Authentication → URL Configuration**, set the
+   Site URL to your Netlify URL once you have it (step 3 below).
+   Then, in **Authentication → Providers → Email**, turn **off** "Allow
+   new users to sign up" (wording varies by Supabase version - look for a
+   signups/registration toggle). There's no self-serve signup form left in
+   this app, but that toggle closes the door at the platform level too -
+   without it, someone with the public anon key could still call
+   Supabase's own sign-in API directly and create an account that way,
+   bypassing the app's admin-only add-mentor flow entirely. Admin-created
+   accounts (via `admin.createUser`, used by `admin-add-mentor`) still work
+   fine with this turned off - that path uses the service-role key, not the
+   public signup endpoint this toggle controls.
 4. Install the [Supabase CLI](https://supabase.com/docs/guides/cli) locally,
    then from this project folder:
    ```
@@ -196,15 +205,21 @@ below the video still reflects their actual progress either way.
    time.
 8. Copy your **Project URL** and **anon public key** (Project Settings →
    API) — you'll need them next.
-9. **Make yourself the first admin.** There's no admin yet to use the
-   in-app "add a mentor" form, so this one time only, do it via SQL. Sign
-   in to the deployed app once through "create your account" (so a
-   `mentors` row exists for you), then in the SQL editor run:
-   ```sql
-   update mentors set is_admin = true where email = 'you@example.com';
-   ```
-   From then on, `/admin` is available to you, and you can add every other
-   mentor and admin directly from that page instead of touching SQL again.
+9. **Create yourself as the first admin.** There's no admin yet to use the
+   in-app "add a mentor" form (and no self-signup to fall back on), so this
+   one time only, create your own account by hand:
+   1. In Supabase, go to **Authentication → Users → Add user**, enter your
+      email, and check **Auto Confirm User** (so it's usable immediately,
+      no confirmation email needed). Create it, then copy the new user's
+      **UID** shown in the table.
+   2. In the SQL editor, run:
+      ```sql
+      insert into mentors (auth_user_id, name, email, is_admin)
+      values ('paste-the-uid-here', 'Your Name', 'you@example.com', true);
+      ```
+   From then on, you can sign in from the front door with that email + the
+   `MENTOR_SIGN_IN_CODE`, and `/admin`/`/dashboard` will let you add every
+   other mentor and admin directly instead of touching SQL again.
 
 ### 2. The web app (GitHub + Netlify)
 
@@ -230,9 +245,9 @@ below the video still reflects their actual progress either way.
 
 ### 3. Try it
 
-- Visit your Netlify URL, create your own mentor account via "create your
-  account," then sign the mentor out and back in from the front door using
-  your email + the `MENTOR_SIGN_IN_CODE` to confirm that works too.
+- Visit your Netlify URL and sign in from the front door with the email
+  you just made yourself an admin with, plus the `MENTOR_SIGN_IN_CODE`, to
+  confirm that works.
 - Add a convert with **your own** email address and today's date as the
   start date, so you can see Day 0 immediately.
 - Manually trigger the email job once to test it without waiting for the
@@ -245,9 +260,13 @@ below the video still reflects their actual progress either way.
 
 ## Housekeeping
 
-`src/pages/PhoneEntry.tsx` is a dead stub left over from before the switch
-to email — nothing imports it (see `FrontDoor.tsx`). Feel free to
-`git rm src/pages/PhoneEntry.tsx`.
+Two dead stub files, safe to delete - nothing imports either of them
+anymore:
+
+```
+git rm src/pages/PhoneEntry.tsx    # left over from the phone -> email switch
+git rm src/pages/MentorLogin.tsx   # left over from removing self-serve signup
+```
 
 ## Local development
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useSession } from '../lib/useSession'
 import { useMentorProfile } from '../lib/useMentorProfile'
@@ -99,11 +99,8 @@ export default function FrontDoor() {
           {status === 'not_found' && (
             <p className="text-sm text-amber-700">
               We don't recognize that email. New converts: ask your mentor to add you. New
-              mentors:{' '}
-              <Link to="/email-login" className="underline">
-                create your account here
-              </Link>{' '}
-              first — after that you can come back to this screen.
+              mentors and admins: ask an existing admin to add you from their dashboard — there's
+              no self-signup here.
             </p>
           )}
           {status === 'error' && (
@@ -117,13 +114,6 @@ export default function FrontDoor() {
             {status === 'sending' ? 'Looking up…' : 'Continue'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Mentor signing in for the first time?{' '}
-          <Link to="/email-login" className="underline">
-            Create your account
-          </Link>
-        </p>
       </div>
     </div>
   )

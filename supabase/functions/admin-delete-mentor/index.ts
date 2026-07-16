@@ -1,10 +1,10 @@
 // Supabase Edge Function: admin-delete-mentor
 //
-// Fully removes a mentor: deletes their Supabase Auth account (so they can't
-// sign back in via the front door or the "create your account" fallback)
-// which cascades to delete their `mentors` row (FK: mentors.auth_user_id ->
-// auth.users on delete cascade). Uses the service-role key, so admin-ness
-// and every other check below is enforced by hand instead of relying on RLS.
+// Fully removes a mentor: deletes their Supabase Auth account (so they
+// can't sign back in via the front door) which cascades to delete their
+// `mentors` row (FK: mentors.auth_user_id -> auth.users on delete
+// cascade). Uses the service-role key, so admin-ness and every other check
+// below is enforced by hand instead of relying on RLS.
 //
 // Refuses to run if:
 //   - the caller isn't an admin

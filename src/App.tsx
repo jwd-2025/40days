@@ -32,11 +32,22 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
 }
 
 /**
- * Runs once, app-wide, whenever someone gets signed in - whether that's via
- * the front door's shared code (session handed back directly, see
- * FrontDoor.tsx) or the "create your account" magic-link form (MentorLogin).
- * Makes sure a `mentors` row exists, then routes them to the admin or
- * mentor dashboard as appropriate.
+ * Runs once, app-wide, whenever someone gets signed in. There are two ways
+ * that happens:
+ *   1. The front door's shared code (FrontDoor.tsx calls setSession()
+ *      directly) - FrontDoor already knows the role from identify-role's
+ *      response and navigates itself, immediately, with no extra queries.
+ *   2. Clicking the magic link from "create your account" (MentorLogin) -
+ *      this always lands back on "/", and nothing else on that page knows
+ *      the role yet, so THIS is what has to look it up and navigate.
+ *
+ * Both cases fire the same SIGNED_IN event, so without a guard this would
+ * also run its (slower - upsert, then a separate query) navigate for case
+ * 1, racing FrontDoor's own immediate navigate and usually winning because
+ * it finishes last, bouncing an admin from /admin back to /dashboard right
+ * after they land there. The pathname check below is that guard: by the
+ * time this async chain finishes, FrontDoor's own navigate has already
+ * moved case 1 off of "/", so only case 2 (still sitting on "/") proceeds.
  */
 function useAuthBootstrap() {
   const navigate = useNavigate()
@@ -53,6 +64,10 @@ function useAuthBootstrap() {
           { onConflict: 'auth_user_id', ignoreDuplicates: false },
         )
         localStorage.removeItem('pending_mentor_name')
+
+        // See the note above - only the "just clicked a magic link" case
+        // still needs this component to decide where to go.
+        if (window.location.pathname !== '/') return
 
         const { data: mentor } = await supabase
           .from('mentors')

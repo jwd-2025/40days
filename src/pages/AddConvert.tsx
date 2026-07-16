@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { elapsedDay } from '../lib/progress'
 
 export default function AddConvert() {
   const [name, setName] = useState('')
@@ -36,18 +37,42 @@ export default function AddConvert() {
       return
     }
 
-    const { error: insertError } = await supabase.from('converts').insert({
-      mentor_id: mentor.id,
-      name,
-      email,
-      start_date: startDate,
-    })
+    const { data: convert, error: insertError } = await supabase
+      .from('converts')
+      .insert({
+        mentor_id: mentor.id,
+        name,
+        email,
+        start_date: startDate,
+      })
+      .select('id')
+      .single()
 
-    setSaving(false)
-    if (insertError) {
-      setError(insertError.message)
+    if (insertError || !convert) {
+      setSaving(false)
+      setError(insertError?.message ?? 'Something went wrong.')
       return
     }
+
+    // Don't make them wait for the next daily cron run - send today's
+    // lesson right now, the same way a manual resend does. Only do this if
+    // the start date is today or earlier; a future start date means the
+    // mentor deliberately wants their first lesson to wait, so let the
+    // daily job pick them up naturally when that day arrives.
+    const startsNoLaterThanToday = startDate <= new Date().toISOString().slice(0, 10)
+    if (startsNoLaterThanToday) {
+      const dayNumber = elapsedDay(startDate)
+      const { error: sendError } = await supabase.functions.invoke('resend-video-email', {
+        body: { convertId: convert.id, dayNumber },
+      })
+      if (sendError) {
+        window.alert(
+          `${name} was added, but the first email couldn't be sent automatically (${sendError.message}). You can resend it from their convert page.`,
+        )
+      }
+    }
+
+    setSaving(false)
     navigate('/dashboard')
   }
 

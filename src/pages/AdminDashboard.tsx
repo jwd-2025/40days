@@ -27,6 +27,11 @@ export default function AdminDashboard() {
   const [progressByConvert, setProgressByConvert] = useState<Record<string, { day_number: number; watched_at: string | null }[]>>({})
   const [mentorError, setMentorError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newIsAdmin, setNewIsAdmin] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { session } = useSession()
   const { profile } = useMentorProfile(session)
@@ -78,6 +83,24 @@ export default function AdminDashboard() {
     load()
   }
 
+  async function addMentor(e: React.FormEvent) {
+    e.preventDefault()
+    setAdding(true)
+    setAddError(null)
+    const { data, error } = await supabase.functions.invoke('admin-add-mentor', {
+      body: { name: newName, email: newEmail, isAdmin: newIsAdmin },
+    })
+    setAdding(false)
+    if (error || data?.error) {
+      setAddError(data?.error ?? error?.message ?? 'Something went wrong.')
+      return
+    }
+    setNewName('')
+    setNewEmail('')
+    setNewIsAdmin(false)
+    load()
+  }
+
   async function deleteMentor(mentorId: string, name: string) {
     if (!window.confirm(`Permanently delete ${name}'s mentor account? This revokes their login. This can't be undone.`)) return
     setMentorError(null)
@@ -119,6 +142,52 @@ export default function AdminDashboard() {
 
       <section className="mb-10">
         <h2 className="text-sm font-semibold text-slate-600 mb-3">Mentors</h2>
+
+        <form
+          onSubmit={addMentor}
+          className="bg-white border border-slate-200 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3"
+        >
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Name</label>
+            <input
+              required
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="mt-1 text-sm rounded-md border border-slate-300 px-2 py-1.5"
+              placeholder="Jane Doe"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">Email</label>
+            <input
+              required
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="mt-1 text-sm rounded-md border border-slate-300 px-2 py-1.5"
+              placeholder="you@example.com"
+            />
+          </div>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-1.5">
+            <input
+              type="checkbox"
+              checked={newIsAdmin}
+              onChange={(e) => setNewIsAdmin(e.target.checked)}
+            />
+            Make them an admin
+          </label>
+          <button
+            disabled={adding}
+            className="text-sm px-3 py-1.5 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {adding ? 'Adding…' : 'Add mentor'}
+          </button>
+          {addError && <p className="w-full text-xs text-red-600">{addError}</p>}
+          <p className="w-full text-xs text-slate-400">
+            They can sign in right away from the front door with this email + the shared mentor/admin code — no invite email needed.
+          </p>
+        </form>
+
         {mentorError && <p className="text-xs text-red-600 mb-2">{mentorError}</p>}
         <div className="bg-white border border-slate-200 rounded-lg divide-y">
           {mentors?.map((m) => (

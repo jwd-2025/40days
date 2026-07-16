@@ -16,12 +16,21 @@ dashboard for the mentor.
   their token isn't a real login, just an unguessable ID for their own
   page. Nobody ever sees who an email belongs to just by typing it in, and
   a wrong code looks identical to an email that isn't in the system at all.
-- A brand-new mentor (not in the system yet) creates their account instead,
-  the first time only, via the "create your account" link — that one time
-  it does use an actual emailed sign-in link, since there's no `mentors`
-  row yet to look up. After that they're in the `mentors` table and can use
-  the front door (email + code) like everyone else.
-- The mentor adds a new convert: name, email, and a start date.
+- **Adding a mentor or admin.** An admin can add someone directly from
+  `/admin`: name, email, and a checkbox for whether they're an admin. This
+  creates their account and `mentors` row right then and there — no invite
+  email, no waiting. They can sign in immediately from the front door with
+  that email + the shared mentor/admin code. (There's also a "create your
+  account" self-serve link on the front door for a mentor to add
+  themselves via a one-time emailed link, in case you'd rather they set
+  themselves up than do it for them - either path ends at the same place.)
+- The mentor adds a new convert: name, email, and a start date. If that
+  start date is today or earlier, their first lesson email goes out
+  immediately (same send as a manual resend) instead of waiting for the
+  next scheduled run - if the send fails for some reason, the mentor sees
+  an alert right there telling them to resend it from the convert's page.
+  A future start date is left alone; the daily job picks them up once that
+  day actually arrives.
 - Every day, a scheduled job finds anyone whose day 0-40 lands on today, and
   emails them that day's lesson with a link to their personal page.
 - The convert doesn't need an account. Their email includes a personal link
@@ -33,11 +42,12 @@ dashboard for the mentor.
   without being punishing, and to make daily consistency easy to see at a
   glance.
 - **Admins** (any mentor with `is_admin = true`) get a separate `/admin`
-  view: every mentor and every convert across the whole program, the
-  ability to promote another mentor to admin, deactivate/reassign/**delete**
-  a convert, **delete a mentor account** (once their converts are
-  reassigned), and jump into any convert's detail page to resend a specific
-  day's email — the "fix issues" role.
+  view: add a new mentor or admin directly, every mentor and every convert
+  across the whole program, the ability to promote another mentor to
+  admin, deactivate/reassign/**delete** a convert, **delete a mentor
+  account** (once their converts are reassigned), and jump into any
+  convert's detail page to resend a specific day's email — the "fix
+  issues" role.
 - **Removing someone.** A mentor can delete their own convert (and its
   entire watch history) from that convert's detail page — use this for "add
   them by mistake" or "they asked to stop," not just a pause (there's no
@@ -112,6 +122,7 @@ later, you'd need to re-add a phone field to the intake forms first.
    supabase functions deploy identify-role
    supabase functions deploy resend-video-email
    supabase functions deploy admin-delete-mentor
+   supabase functions deploy admin-add-mentor
    ```
 5. Generate a Gmail **app password**: turn on 2-Step Verification on the
    sending Gmail account, then visit
@@ -136,14 +147,15 @@ later, you'd need to re-add a phone field to the intake forms first.
    time.
 8. Copy your **Project URL** and **anon public key** (Project Settings →
    API) — you'll need them next.
-9. **Make yourself the first admin.** Sign in to the deployed app once
-   through "create your account" (so a `mentors` row exists for you), then
-   in the SQL editor run:
+9. **Make yourself the first admin.** There's no admin yet to use the
+   in-app "add a mentor" form, so this one time only, do it via SQL. Sign
+   in to the deployed app once through "create your account" (so a
+   `mentors` row exists for you), then in the SQL editor run:
    ```sql
    update mentors set is_admin = true where email = 'you@example.com';
    ```
-   From then on, `/admin` is available to you, and you can promote other
-   mentors to admin from that page instead of touching SQL again.
+   From then on, `/admin` is available to you, and you can add every other
+   mentor and admin directly from that page instead of touching SQL again.
 
 ### 2. The web app (GitHub + Netlify)
 

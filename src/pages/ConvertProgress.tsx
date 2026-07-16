@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { VIDEOS } from '../data/videos'
 import { elapsedDay, currentStreak, completedCount } from '../lib/progress'
@@ -17,11 +17,14 @@ interface Convert {
 
 export default function ConvertProgress() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [convert, setConvert] = useState<Convert | null>(null)
   const [progress, setProgress] = useState<{ day_number: number; watched_at: string | null }[]>([])
   const [resendDay, setResendDay] = useState(0)
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -50,6 +53,20 @@ export default function ConvertProgress() {
     })
     setResending(false)
     setResendMsg(error ? `Couldn't resend: ${error.message}` : `Day ${resendDay} email resent.`)
+  }
+
+  async function handleDelete() {
+    if (!convert) return
+    if (!window.confirm(`Permanently delete ${convert.name} and their entire watch history? This can't be undone.`)) return
+    setDeleting(true)
+    setDeleteError(null)
+    const { error } = await supabase.rpc('delete_convert', { p_convert_id: convert.id })
+    setDeleting(false)
+    if (error) {
+      setDeleteError(error.message)
+      return
+    }
+    navigate('/dashboard')
   }
 
   if (!convert) return <div className="min-h-screen flex items-center justify-center text-slate-400">Loading…</div>
@@ -122,6 +139,22 @@ export default function ConvertProgress() {
           </button>
         </div>
         {resendMsg && <p className="mt-2 text-xs text-slate-500">{resendMsg}</p>}
+      </div>
+
+      <div className="mt-6 bg-white border border-red-100 rounded-lg p-4">
+        <p className="text-sm font-medium text-red-700 mb-2">Remove this convert</p>
+        <p className="text-xs text-slate-500 mb-3">
+          Permanently deletes {convert.name} and their entire watch history. This can't be undone —
+          if you just want to pause their emails, use Deactivate instead (ask an admin).
+        </p>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-sm px-3 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          {deleting ? 'Deleting…' : 'Delete convert'}
+        </button>
+        {deleteError && <p className="mt-2 text-xs text-red-600">{deleteError}</p>}
       </div>
     </div>
   )

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/useSession'
+import { useMentorProfile } from '../lib/useMentorProfile'
 import { elapsedDay, completedCount } from '../lib/progress'
 
 interface MentorRow {
@@ -25,7 +27,11 @@ export default function AdminDashboard() {
   const [mentors, setMentors] = useState<MentorRow[] | null>(null)
   const [converts, setConverts] = useState<ConvertRow[] | null>(null)
   const [progressByConvert, setProgressByConvert] = useState<Record<string, { day_number: number; watched_at: string | null }[]>>({})
+  const [mentorError, setMentorError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const navigate = useNavigate()
+  const { session } = useSession()
+  const { profile } = useMentorProfile(session)
 
   useEffect(() => {
     load()
@@ -62,6 +68,33 @@ export default function AdminDashboard() {
     load()
   }
 
+  async function deleteConvert(convertId: string, name: string) {
+    if (!window.confirm(`Permanently delete ${name} and their entire watch history? This can't be undone.`)) return
+    setBusyId(convertId)
+    const { error } = await supabase.rpc('delete_convert', { p_convert_id: convertId })
+    setBusyId(null)
+    if (error) {
+      window.alert(`Couldn't delete: ${error.message}`)
+      return
+    }
+    load()
+  }
+
+  async function deleteMentor(mentorId: string, name: string) {
+    if (!window.confirm(`Permanently delete ${name}'s mentor account? This revokes their login. This can't be undone.`)) return
+    setMentorError(null)
+    setBusyId(mentorId)
+    const { data, error } = await supabase.functions.invoke('admin-delete-mentor', {
+      body: { mentorId },
+    })
+    setBusyId(null)
+    if (error || data?.error) {
+      setMentorError(data?.error ?? error?.message ?? 'Something went wrong.')
+      return
+    }
+    load()
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     navigate('/')
@@ -88,6 +121,7 @@ export default function AdminDashboard() {
 
       <section className="mb-10">
         <h2 className="text-sm font-semibold text-slate-600 mb-3">Mentors</h2>
+        {mentorError && <p className="text-xs text-red-600 mb-2">{mentorError}</p>}
         <div className="bg-white border border-slate-200 rounded-lg divide-y">
           {mentors?.map((m) => (
             <div key={m.id} className="flex items-center justify-between px-4 py-3">
@@ -97,16 +131,27 @@ export default function AdminDashboard() {
                   {m.email} {m.phone ? `· ${m.phone}` : ''}
                 </p>
               </div>
-              <button
-                onClick={() => toggleAdmin(m.id, m.is_admin)}
-                className={`text-xs px-3 py-1 rounded-full border ${
-                  m.is_admin
-                    ? 'bg-brand-500 text-white border-brand-500'
-                    : 'text-slate-500 border-slate-300 hover:border-brand-500'
-                }`}
-              >
-                {m.is_admin ? 'Admin' : 'Make admin'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleAdmin(m.id, m.is_admin)}
+                  className={`text-xs px-3 py-1 rounded-full border ${
+                    m.is_admin
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'text-slate-500 border-slate-300 hover:border-brand-500'
+                  }`}
+                >
+                  {m.is_admin ? 'Admin' : 'Make admin'}
+                </button>
+                {m.id !== profile?.id && (
+                  <button
+                    onClick={() => deleteMentor(m.id, m.name || m.email || 'this mentor')}
+                    disabled={busyId === m.id}
+                    className="text-xs px-3 py-1 rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {busyId === m.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
           {mentors?.length === 0 && <p className="px-4 py-3 text-sm text-slate-400">No mentors yet.</p>}
@@ -142,6 +187,13 @@ export default function AdminDashboard() {
                       className="text-xs px-3 py-1 rounded-full border border-slate-300 text-slate-500 hover:border-brand-500"
                     >
                       {c.active ? 'Deactivate' : 'Reactivate'}
+                    </button>
+                    <button
+                      onClick={() => deleteConvert(c.id, c.name)}
+                      disabled={busyId === c.id}
+                      className="text-xs px-3 py-1 rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {busyId === c.id ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
                 </div>

@@ -8,10 +8,13 @@ dashboard for the mentor.
 ## How it works
 
 - Anyone opens the app to a single **phone number** screen. The app looks
-  the number up and emails the right thing to that person: a sign-in link
-  for a mentor/admin, or a resend of their personal link for a convert.
-  Nobody ever sees who a number belongs to just by typing it in — the app
-  only ever emails the account that actually owns that phone number.
+  the number up: a mentor/admin gets a normal magic-link sign-in email
+  (they have a real account with edit privileges, so they still need to
+  prove they own that inbox); a convert is dropped **straight into their
+  `/watch/<token>` page immediately, with no email step at all** — their
+  token isn't a real login, just an unguessable ID for their own page, so
+  there's nothing to gain by making them wait on an inbox. Nobody ever sees
+  who a number belongs to just by typing it in.
 - A brand-new mentor (whose phone isn't in the system yet) signs in with
   email instead, the first time only, from the "sign in with email" link.
 - The mentor adds a new convert: name, phone, email, and a start date.
@@ -27,9 +30,19 @@ dashboard for the mentor.
   glance.
 - **Admins** (any mentor with `is_admin = true`) get a separate `/admin`
   view: every mentor and every convert across the whole program, the
-  ability to promote another mentor to admin, deactivate/reassign a
-  convert, and jump into any convert's detail page to resend a specific
+  ability to promote another mentor to admin, deactivate/reassign/**delete**
+  a convert, **delete a mentor account** (once their converts are
+  reassigned), and jump into any convert's detail page to resend a specific
   day's email — the "fix issues" role.
+- **Removing someone.** A mentor can delete their own convert (and its
+  entire watch history) from that convert's detail page — use this for "add
+  them by mistake" or "they asked to stop," not just a pause (there's no
+  mentor-facing pause; ask an admin to Deactivate instead if you just want
+  to stop emails without losing history). Admins can delete any convert the
+  same way from `/admin`, and can delete a mentor's account outright once
+  that mentor has no converts still assigned to them (reassign first) —
+  deleting a mentor also revokes their ability to sign back in at all.
+  All deletes ask for confirmation first and can't be undone.
 
 ## Why videos are embedded (and where they actually come from)
 
@@ -64,11 +77,14 @@ SMS later.
    existing one).
 2. In the SQL editor, run, in order: `supabase/migrations/0001_init.sql`,
    then `0002_cron.sql` (after step 7 below), then
-   `0003_admin_and_phone_lookup.sql`, then `0004_free_video_source.sql`.
+   `0003_admin_and_phone_lookup.sql`, then `0004_free_video_source.sql`,
+   then `0005_delete_convert.sql`.
    `0001` creates the tables, security rules, and seeds the 41 videos;
    `0003` adds the admin flag and the normalized phone-number lookup
    columns; `0004` points the videos at the free, embeddable
-   video.wvbs.org source instead of the paid app.wvbs.org platform.
+   video.wvbs.org source instead of the paid app.wvbs.org platform; `0005`
+   adds the function that lets a mentor delete their own convert (or an
+   admin delete anyone's).
 3. In **Authentication → Providers**, make sure **Email** is enabled, and
    under **Authentication → URL Configuration** set the Site URL to your
    Netlify URL once you have it (step 3 below) so magic links redirect
@@ -81,6 +97,7 @@ SMS later.
    supabase functions deploy send-daily-videos
    supabase functions deploy identify-role
    supabase functions deploy resend-video-email
+   supabase functions deploy admin-delete-mentor
    ```
 5. Generate a Gmail **app password**: turn on 2-Step Verification on the
    sending Gmail account, then visit
@@ -160,11 +177,17 @@ npm run dev
   Edge Function.
 - No SMS. If you later get a Twilio account, the convert's `phone` field is
   already stored and ready to use.
-- The phone-number front door identifies *which account* to email, but the
-  actual proof of identity is still "you clicked the link in that account's
-  email" — same trust level as before, just reached by typing a phone
-  number instead of an email address. If you later add Twilio, the natural
-  upgrade is a real SMS one-time code at this same screen.
+- For mentors/admins, the phone-number front door identifies *which
+  account* to email, but the actual proof of identity is still "you clicked
+  the magic link in that account's email" — same trust level as before,
+  just reached by typing a phone number instead of an email address. For
+  converts there's no proof-of-identity step at all: typing in a phone
+  number that matches a convert drops you straight into that convert's
+  watch page. That's an intentional trade for zero-friction daily use, but
+  it does mean anyone who knows (or guesses) a convert's phone number can
+  see their progress and mark days watched. If that ever matters more than
+  the friction it'd add, the fix is a real SMS one-time code (needs Twilio)
+  gating the convert path too.
 - A phone number can only belong to one mentor/admin (enforced by a unique
   index), so if two mentors ever shared a number, the second one to sign up
   would hit a database error — worth knowing before onboarding a large team.

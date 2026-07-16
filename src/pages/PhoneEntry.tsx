@@ -83,10 +83,10 @@ export default function PhoneEntry() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              placeholder="Leave blank if you're a convert"
+              placeholder="Leave blank if you are not an admin"
             />
             <p className="mt-1 text-xs text-slate-400">
-              Mentors and admins: enter the code your admin gave you. Converts can leave this blank.
+              Mentors and admins: enter the code your admin gave you.
             </p>
           </div>
 

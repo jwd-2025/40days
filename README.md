@@ -121,6 +121,20 @@ does (UTC), and `src/lib/progress.ts`'s `elapsedDay()` (used for the
 dashboard displays) was changed to match. There's now only one definition
 of "what day is it" anywhere in the app.
 
+That closed the timezone-drift gap, but there was a second, more direct way
+for an email and its link to disagree: every lesson email's link went to
+the convert's *generic* page (`/watch/<token>`), which always shows
+whatever day the elapsed-time math currently says is "today" - not
+necessarily the day printed in the email. Resending an earlier or later
+day on purpose (see "Known limitations" below) made this obvious: resend
+"Day 1" while the convert's real elapsed day is still 0, and the link
+would show Day 0's video under a "Day 1" subject line. Every email link
+now includes `?day=N` (e.g. `/watch/<token>?day=1`), and `ConvertView.tsx`
+prefers that specific day over the elapsed-time calculation when present -
+so whatever day an email says is exactly the video its link shows,
+regardless of where the convert's real progress is. The calendar/streak
+below the video still reflects their actual progress either way.
+
 ## One-time setup
 
 ### 1. Supabase (database + auth + the daily email job)

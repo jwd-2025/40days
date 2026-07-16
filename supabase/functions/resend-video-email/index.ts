@@ -67,7 +67,10 @@ Deno.serve(async (req) => {
         dayNumber,
         title: video.title,
         duration: video.duration,
-        watchLink: `${APP_BASE_URL}/watch/${convert.access_token}`,
+        // ?day=N pins the watch page to this specific day - crucial here,
+        // since a manual resend can target a day well ahead of (or behind)
+        // the convert's actual elapsed-time "current day."
+        watchLink: `${APP_BASE_URL}/watch/${convert.access_token}?day=${dayNumber}`,
       }),
     )
 

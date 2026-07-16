@@ -87,7 +87,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    const watchLink = `${APP_BASE_URL}/watch/${convert.access_token}`
+    // ?day=N pins the watch page to this specific day, so it always shows
+    // the same video the email describes - not whatever day elapsed-time
+    // math happens to say "today" is at the moment the link gets clicked.
+    const watchLink = `${APP_BASE_URL}/watch/${convert.access_token}?day=${dayNumber}`
 
     await sendMail(
       convert.email,

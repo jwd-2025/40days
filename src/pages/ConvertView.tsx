@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import StreakCalendar, { DayState } from '../components/StreakCalendar'
 
@@ -26,6 +26,7 @@ function durationToSeconds(duration: string): number {
 
 export default function ConvertView() {
   const { token } = useParams()
+  const [searchParams] = useSearchParams()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [marking, setMarking] = useState(false)
@@ -33,6 +34,19 @@ export default function ConvertView() {
   useEffect(() => {
     load()
   }, [token])
+
+  // Every lesson email links to a specific day via ?day=N - without this,
+  // the link is just the convert's generic page, which always shows
+  // whatever day the elapsed-time math currently says is "today." That
+  // meant an email correctly labeled "Day 1" could link to a page that,
+  // if opened before a full day had actually passed (or if a mentor
+  // deliberately resent a day ahead of schedule), still showed Day 0's
+  // video - the email and the video it linked to could be out of sync.
+  // With ?day=N, the featured video below always matches what the email
+  // said, regardless of where the convert's real elapsed-day count is.
+  // The calendar/streak below still reflects their *actual* progress.
+  const requestedDayParam = searchParams.get('day')
+  const requestedDay = requestedDayParam !== null ? Number(requestedDayParam) : null
 
   // We don't control the embedded player's playback events (it's a
   // third-party WVBS/YouTube embed we don't have API access to), so this is
@@ -42,19 +56,23 @@ export default function ConvertView() {
   // anyone who'd rather mark it right away or if this doesn't fire.
   useEffect(() => {
     if (!rows || rows.length === 0) return
-    const current = rows.find((r) => r.day_number === rows[0].current_day)
-    if (!current || current.watched_at) return
+    const targetDay =
+      requestedDay !== null && rows.some((r) => r.day_number === requestedDay)
+        ? requestedDay
+        : rows[0].current_day
+    const featured = rows.find((r) => r.day_number === targetDay)
+    if (!featured || featured.watched_at) return
 
-    const seconds = durationToSeconds(current.duration)
+    const seconds = durationToSeconds(featured.duration)
     if (seconds <= 0) return
 
     const timer = setTimeout(() => {
-      markWatched(current.day_number, { silent: true })
+      markWatched(featured.day_number, { silent: true })
     }, seconds * 1000)
 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows])
+  }, [rows, requestedDay])
 
   async function load() {
     const { data, error } = await supabase.rpc('get_convert_view', { p_token: token })
@@ -80,7 +98,11 @@ export default function ConvertView() {
   if (rows.length === 0) return <Shell><p className="text-slate-400">No lessons found.</p></Shell>
 
   const { convert_name, current_day } = rows[0]
-  const today = rows.find((r) => r.day_number === current_day)!
+  // Prefer the day the link asked for (?day=N, from an email) over the
+  // elapsed-time "current day" - but only if it's a real day in this
+  // convert's lineup, so a malformed/missing param just falls back to normal.
+  const requested = requestedDay !== null ? rows.find((r) => r.day_number === requestedDay) : undefined
+  const featured = requested ?? rows.find((r) => r.day_number === current_day)!
   const watchedByDay = new Map(rows.map((r) => [r.day_number, !!r.watched_at]))
   const doneCount = rows.filter((r) => r.watched_at).length
 
@@ -97,34 +119,34 @@ export default function ConvertView() {
     <Shell>
       <p className="text-sm text-slate-500">Hi {convert_name}, welcome back 👋</p>
       <h1 className="text-lg font-semibold text-brand-700 mt-1">
-        Day {current_day} of 40: {today.title}
+        Day {featured.day_number} of 40: {featured.title}
       </h1>
-      <p className="text-xs text-slate-400 mb-4">{today.duration}</p>
+      <p className="text-xs text-slate-400 mb-4">{featured.duration}</p>
 
       <div className="relative w-full overflow-hidden rounded-md mb-2" style={{ paddingBottom: '56.25%' }}>
         <iframe
-          key={today.day_number}
-          src={today.embed_url}
+          key={featured.day_number}
+          src={featured.embed_url}
           className="absolute inset-0 w-full h-full"
           frameBorder={0}
           allow="autoplay; encrypted-media; fullscreen"
           allowFullScreen
-          title={today.title}
+          title={featured.title}
         />
       </div>
-      {!today.watched_at && (
+      {!featured.watched_at && (
         <p className="text-center text-xs text-slate-400 mb-2">
           This marks itself done automatically once you've had it open for the video's length —
           or just tap below.
         </p>
       )}
 
-      {today.watched_at ? (
+      {featured.watched_at ? (
         <p className="text-center text-sm text-emerald-600">✓ Marked watched</p>
       ) : (
         <button
           disabled={marking}
-          onClick={() => markWatched(current_day)}
+          onClick={() => markWatched(featured.day_number)}
           className="w-full rounded-md border border-brand-500 text-brand-600 py-2.5 font-medium hover:bg-brand-50 disabled:opacity-50"
         >
           {marking ? 'Saving…' : "I've watched this"}

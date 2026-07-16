@@ -4,12 +4,14 @@ import { supabase } from '../lib/supabaseClient'
 import { useSession } from '../lib/useSession'
 import { useMentorProfile } from '../lib/useMentorProfile'
 import { elapsedDay, completedCount } from '../lib/progress'
+import { formatLastSeen } from '../lib/format'
 
 interface MentorRow {
   id: string
   name: string | null
   email: string | null
   is_admin: boolean
+  last_sign_in_at?: string | null
 }
 
 interface ConvertRow {
@@ -19,6 +21,7 @@ interface ConvertRow {
   start_date: string
   active: boolean
   mentor_id: string
+  last_seen_at: string | null
 }
 
 export default function AdminDashboard() {
@@ -41,12 +44,16 @@ export default function AdminDashboard() {
   }, [])
 
   async function load() {
-    const [{ data: mentorRows }, { data: convertRows }, { data: progressRows }] = await Promise.all([
+    const [{ data: mentorRows }, { data: loginRows }, { data: convertRows }, { data: progressRows }] = await Promise.all([
       supabase.from('mentors').select('id, name, email, is_admin').order('name'),
-      supabase.from('converts').select('id, name, email, start_date, active, mentor_id').order('created_at', { ascending: false }),
+      supabase.rpc('admin_mentor_last_logins'),
+      supabase.from('converts').select('id, name, email, start_date, active, mentor_id, last_seen_at').order('created_at', { ascending: false }),
       supabase.from('progress').select('convert_id, day_number, watched_at'),
     ])
-    setMentors(mentorRows ?? [])
+    const loginById = new Map<string, string | null>(
+      (loginRows ?? []).map((r: { id: string; last_sign_in_at: string | null }) => [r.id, r.last_sign_in_at]),
+    )
+    setMentors((mentorRows ?? []).map((m) => ({ ...m, last_sign_in_at: loginById.get(m.id) ?? null })))
     setConverts(convertRows ?? [])
     const grouped: Record<string, { day_number: number; watched_at: string | null }[]> = {}
     for (const p of progressRows ?? []) {
@@ -202,6 +209,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-slate-800">{m.name || '(no name)'}</p>
                 <p className="text-xs text-slate-500">{m.email}</p>
+                <p className="text-xs text-slate-400">Last login: {formatLastSeen(m.last_sign_in_at)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -251,6 +259,7 @@ export default function AdminDashboard() {
                       Mentor: {mentorName(c.mentor_id)} · Started {c.start_date} · Day {Math.min(day, 40)}/40 ·{' '}
                       {done}/41 watched
                     </p>
+                    <p className="text-xs text-slate-400">Last active: {formatLastSeen(c.last_seen_at)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {!c.active && <span className="text-xs text-slate-400">Inactive</span>}

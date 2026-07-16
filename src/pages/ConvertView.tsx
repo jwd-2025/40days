@@ -78,6 +78,9 @@ export default function ConvertView() {
     const { data, error } = await supabase.rpc('get_convert_view', { p_token: token })
     if (error) setError(error.message)
     else setRows(data as Row[])
+    // Fire-and-forget - lets the mentor/admin dashboards show "last active"
+    // for this convert. Not worth blocking or surfacing an error over.
+    supabase.rpc('touch_convert_last_seen', { p_token: token })
   }
 
   async function markWatched(day: number, opts?: { silent?: boolean }) {

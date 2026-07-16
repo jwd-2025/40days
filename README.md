@@ -143,7 +143,7 @@ below the video still reflects their actual progress either way.
    then `0002_cron.sql` (after step 7 below), then
    `0003_admin_and_phone_lookup.sql`, then `0004_free_video_source.sql`,
    then `0005_delete_convert.sql`, then `0006_drop_phone.sql`, then
-   `0007_fix_day_timezone_mismatch.sql`.
+   `0007_fix_day_timezone_mismatch.sql`, then `0008_last_seen.sql`.
    `0001` creates the tables, security rules, and seeds the 41 videos;
    `0003` adds the admin flag (its phone-lookup columns get removed again
    by `0006` below, but running it in order keeps the migration history
@@ -155,7 +155,10 @@ below the video still reflects their actual progress either way.
    phone numbers at all" above); `0007` fixes a bug where the day number in
    a lesson email could disagree with the day shown on the watch page (see
    "Why the day number in an email could disagree with the watch page"
-   below).
+   below); `0008` adds "last active"/"last login" tracking - a
+   `last_seen_at` column on converts (touched every time their watch page
+   loads) and a function exposing mentors'/admins' Supabase Auth
+   `last_sign_in_at` to admins only.
 3. In **Authentication → Providers**, make sure **Email** is enabled (the
    front door's sign-in still runs on Supabase's email-based auth under the
    hood, even though no email actually gets sent for it - see "How it

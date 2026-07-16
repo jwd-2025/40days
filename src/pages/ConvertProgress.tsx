@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { VIDEOS } from '../data/videos'
 import { elapsedDay, currentStreak, completedCount } from '../lib/progress'
+import { formatLastSeen } from '../lib/format'
 import StreakCalendar, { DayState } from '../components/StreakCalendar'
 
 interface Convert {
@@ -12,6 +13,7 @@ interface Convert {
   start_date: string
   active: boolean
   access_token: string
+  last_seen_at: string | null
 }
 
 export default function ConvertProgress() {
@@ -29,7 +31,7 @@ export default function ConvertProgress() {
     if (!id) return
     supabase
       .from('converts')
-      .select('id, name, email, start_date, active, access_token')
+      .select('id, name, email, start_date, active, access_token, last_seen_at')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -92,6 +94,7 @@ export default function ConvertProgress() {
       <h1 className="text-xl font-semibold text-brand-700 mt-2">{convert.name}</h1>
       <p className="text-sm text-slate-500">{convert.email}</p>
       <p className="text-sm text-slate-500">Started {convert.start_date}</p>
+      <p className="text-sm text-slate-400">Last active: {formatLastSeen(convert.last_seen_at)}</p>
 
       <div className="grid grid-cols-3 gap-3 my-6">
         <Stat label="Day" value={`${Math.min(today, 40)}/40`} />

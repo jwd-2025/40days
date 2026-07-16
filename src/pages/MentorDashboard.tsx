@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useSession } from '../lib/useSession'
 import { useMentorProfile } from '../lib/useMentorProfile'
 import { elapsedDay, currentStreak, completedCount, ProgressRow } from '../lib/progress'
+import { formatLastSeen } from '../lib/format'
 
 interface ConvertRow {
   id: string
@@ -12,6 +13,7 @@ interface ConvertRow {
   start_date: string
   active: boolean
   mentor_id: string
+  last_seen_at: string | null
 }
 
 interface ConvertWithProgress extends ConvertRow {
@@ -72,7 +74,7 @@ export default function MentorDashboard() {
     const [{ data: convertRows }, { data: mentorRows }] = await Promise.all([
       supabase
         .from('converts')
-        .select('id, name, email, start_date, active, mentor_id')
+        .select('id, name, email, start_date, active, mentor_id, last_seen_at')
         .order('created_at', { ascending: false }),
       supabase.from('mentors').select('id, name, email'),
     ])
@@ -219,6 +221,7 @@ export default function MentorDashboard() {
                   {profile?.is_admin && (
                     <p className="text-xs text-slate-400">Mentor: {mentorName(c.mentor_id)}</p>
                   )}
+                  <p className="text-xs text-slate-400">Last active: {formatLastSeen(c.last_seen_at)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-brand-600">

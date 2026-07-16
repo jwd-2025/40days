@@ -9,7 +9,6 @@ type Status = 'idle' | 'sending' | 'sent' | 'not_found' | 'error'
 export default function PhoneEntry() {
   const [phone, setPhone] = useState('')
   const [status, setStatus] = useState<Status>('idle')
-  const [role, setRole] = useState<string | null>(null)
   const { session } = useSession()
   const { profile, loading } = useMentorProfile(session)
   const navigate = useNavigate()
@@ -29,7 +28,14 @@ export default function PhoneEntry() {
       return
     }
     if (data?.found) {
-      setRole(data.role)
+      // Converts get dropped straight into the app - their token is just an
+      // unguessable ID for their own watch page, not a real account, so
+      // there's no inbox to wait on. Mentors/admins still need to prove they
+      // own their inbox before we hand them an edit-capable session.
+      if (data.role === 'convert' && data.token) {
+        navigate(`/watch/${data.token}`)
+        return
+      }
       setStatus('sent')
     } else {
       setStatus('not_found')
@@ -44,9 +50,7 @@ export default function PhoneEntry() {
 
         {status === 'sent' && (
           <p className="text-center text-slate-600 text-sm">
-            {role === 'convert'
-              ? "We've re-sent your personal link to your email — check your inbox."
-              : 'Check your email for a one-click sign-in link.'}
+            Check your email for a one-click sign-in link.
           </p>
         )}
 

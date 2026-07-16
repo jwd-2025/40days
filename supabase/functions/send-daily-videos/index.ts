@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     const { data: video } = await supabase
       .from('videos')
-      .select('title, duration, url')
+      .select('title, duration')
       .eq('day_number', dayNumber)
       .single()
 
@@ -93,7 +93,6 @@ Deno.serve(async (req) => {
         dayNumber,
         title: video.title,
         duration: video.duration,
-        url: video.url,
         watchLink,
         nudge,
       }),

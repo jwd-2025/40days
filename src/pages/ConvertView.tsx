@@ -112,15 +112,6 @@ export default function ConvertView() {
           title={today.title}
         />
       </div>
-      <a
-        href={today.url}
-        target="_blank"
-        rel="noreferrer"
-        className="block text-center text-xs text-slate-400 hover:text-brand-600 underline mb-4"
-      >
-        Trouble watching? Open on WVBS instead
-      </a>
-
       {!today.watched_at && (
         <p className="text-center text-xs text-slate-400 mb-2">
           This marks itself done automatically once you've had it open for the video's length —

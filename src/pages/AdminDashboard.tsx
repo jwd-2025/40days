@@ -57,6 +57,13 @@ export default function AdminDashboard() {
   }
 
   async function toggleAdmin(mentorId: string, current: boolean) {
+    if (mentorId === profile?.id) {
+      // Refuse client-side too, not just via the disabled button below -
+      // demoting yourself here would lock you out of /admin with no other
+      // admin around to undo it (short of running SQL again).
+      window.alert("You can't remove your own admin access here. Have another admin do it.")
+      return
+    }
     await supabase.from('mentors').update({ is_admin: !current }).eq('id', mentorId)
     load()
   }
@@ -199,7 +206,9 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => toggleAdmin(m.id, m.is_admin)}
-                  className={`text-xs px-3 py-1 rounded-full border ${
+                  disabled={m.id === profile?.id}
+                  title={m.id === profile?.id ? "You can't change your own admin access here" : undefined}
+                  className={`text-xs px-3 py-1 rounded-full border disabled:opacity-50 disabled:cursor-not-allowed ${
                     m.is_admin
                       ? 'bg-brand-500 text-white border-brand-500'
                       : 'text-slate-500 border-slate-300 hover:border-brand-500'

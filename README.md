@@ -16,14 +16,18 @@ dashboard for the mentor.
   their token isn't a real login, just an unguessable ID for their own
   page. Nobody ever sees who an email belongs to just by typing it in, and
   a wrong code looks identical to an email that isn't in the system at all.
-- **Adding a mentor or admin.** An admin can add someone directly from
-  `/admin`: name, email, and a checkbox for whether they're an admin. This
-  creates their account and `mentors` row right then and there — no invite
-  email, no waiting. They can sign in immediately from the front door with
-  that email + the shared mentor/admin code. (There's also a "create your
-  account" self-serve link on the front door for a mentor to add
-  themselves via a one-time emailed link, in case you'd rather they set
-  themselves up than do it for them - either path ends at the same place.)
+- **Adding a mentor or admin.** An admin sees a "+ Add a mentor or admin"
+  button right on their own `/dashboard` (no need to go anywhere else):
+  name, email, and a checkbox for whether they're an admin. This creates
+  the account and `mentors` row right then and there — no invite email, no
+  waiting. They can sign in immediately from the front door with that
+  email + the shared mentor/admin code. The same form also exists on
+  `/admin`, which admins can still reach via a "Full admin tools" link on
+  their dashboard, for the other management actions (reassign, deactivate,
+  delete). (There's also a "create your account" self-serve link on the
+  front door for a mentor to add themselves via a one-time emailed link,
+  in case you'd rather they set themselves up than do it for them - either
+  path ends at the same place.)
 - The mentor adds a new convert: name, email, and a start date. If that
   start date is today or earlier, their first lesson email goes out
   immediately (same send as a manual resend) instead of waiting for the
@@ -66,12 +70,13 @@ app the videos were originally being linked to). WVBS's own FAQ
 (https://video.wvbs.org/about/faq/) explicitly says any video on that site
 can be embedded elsewhere using their embed code, so that's what this app
 does: each lesson plays in an embedded iframe pointed at
-`https://video.wvbs.org/embed/?ID=<slug>`, with a small "open on WVBS"
-fallback link underneath in case the embed doesn't load for someone. No
-downloading, hosting, or asking permission required — WVBS already grants
-it. See `src/data/videos.ts` for the full list of slugs, and
-`supabase/migrations/0004_free_video_source.sql` for how the database got
-switched over.
+`https://video.wvbs.org/embed/?ID=<slug>`. There's deliberately no "open on
+WVBS instead" exit link anywhere - not on the watch page, not in the daily
+email - since that would just be a back door around the app and its
+progress tracking. No downloading, hosting, or asking permission required
+— WVBS already grants the embed. See `src/data/videos.ts` for the full
+list of slugs, and `supabase/migrations/0004_free_video_source.sql` for how
+the database got switched over.
 
 ## Why email, not SMS or phone numbers at all
 
@@ -206,6 +211,19 @@ to email — nothing imports it (see `FrontDoor.tsx`). Feel free to
 npm install
 cp .env.example .env   # fill in your Supabase URL + anon key
 npm run dev
+```
+
+## If you ever get locked out of /admin
+
+The "Make admin"/"Admin" toggle on `/admin` and `/dashboard` is disabled on
+your own row specifically so you can't accidentally revoke your own admin
+access with nothing else around to undo it. But if it ever happens anyway
+(or your `mentors.is_admin` gets out of sync some other way), there's no
+in-app way to fix it without at least one working admin, so drop back to
+SQL:
+
+```sql
+update mentors set is_admin = true where email = 'you@example.com';
 ```
 
 ## Known limitations / next steps

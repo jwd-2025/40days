@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const { data: video } = await supabaseAdmin
       .from('videos')
-      .select('title, duration, url')
+      .select('title, duration')
       .eq('day_number', dayNumber)
       .single()
     if (!video) return json({ error: 'no video for that day' }, 404)
@@ -66,7 +66,6 @@ Deno.serve(async (req) => {
         dayNumber,
         title: video.title,
         duration: video.duration,
-        url: video.url,
         watchLink: `${APP_BASE_URL}/watch/${convert.access_token}`,
       }),
     )

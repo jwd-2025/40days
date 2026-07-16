@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/useSession'
+import { useMentorProfile } from '../lib/useMentorProfile'
 import { elapsedDay, currentStreak, completedCount, ProgressRow } from '../lib/progress'
 
 interface ConvertRow {
@@ -17,11 +19,39 @@ interface ConvertWithProgress extends ConvertRow {
 
 export default function MentorDashboard() {
   const [converts, setConverts] = useState<ConvertWithProgress[] | null>(null)
+  const [showAddMentor, setShowAddMentor] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newIsAdmin, setNewIsAdmin] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [addedMsg, setAddedMsg] = useState<string | null>(null)
   const navigate = useNavigate()
+  const { session } = useSession()
+  const { profile } = useMentorProfile(session)
 
   useEffect(() => {
     load()
   }, [])
+
+  async function addMentor(e: React.FormEvent) {
+    e.preventDefault()
+    setAdding(true)
+    setAddError(null)
+    setAddedMsg(null)
+    const { data, error } = await supabase.functions.invoke('admin-add-mentor', {
+      body: { name: newName, email: newEmail, isAdmin: newIsAdmin },
+    })
+    setAdding(false)
+    if (error || data?.error) {
+      setAddError(data?.error ?? error?.message ?? 'Something went wrong.')
+      return
+    }
+    setAddedMsg(`${newName} was added as ${newIsAdmin ? 'an admin' : 'a mentor'}.`)
+    setNewName('')
+    setNewEmail('')
+    setNewIsAdmin(false)
+  }
 
   async function load() {
     const { data: convertRows } = await supabase
@@ -54,17 +84,84 @@ export default function MentorDashboard() {
     <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-brand-700">Your converts</h1>
-        <button onClick={signOut} className="text-sm text-slate-500 hover:underline">
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          {profile?.is_admin && (
+            <Link to="/admin" className="text-sm text-brand-600 hover:underline">
+              Full admin tools
+            </Link>
+          )}
+          <button onClick={signOut} className="text-sm text-slate-500 hover:underline">
+            Sign out
+          </button>
+        </div>
       </div>
 
       <Link
         to="/add-convert"
-        className="block w-full text-center rounded-md bg-brand-500 text-white py-2 font-medium hover:bg-brand-600 mb-6"
+        className="block w-full text-center rounded-md bg-brand-500 text-white py-2 font-medium hover:bg-brand-600 mb-4"
       >
         + Add a new convert
       </Link>
+
+      {profile?.is_admin && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowAddMentor((v) => !v)}
+            className="block w-full text-center rounded-md border border-brand-500 text-brand-600 py-2 font-medium hover:bg-brand-50"
+          >
+            {showAddMentor ? '− Hide add mentor/admin' : '+ Add a mentor or admin'}
+          </button>
+
+          {showAddMentor && (
+            <form
+              onSubmit={addMentor}
+              className="mt-3 bg-white border border-slate-200 rounded-lg p-4 flex flex-wrap items-end gap-3"
+            >
+              <div>
+                <label className="block text-xs font-medium text-slate-700">Name</label>
+                <input
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="mt-1 text-sm rounded-md border border-slate-300 px-2 py-1.5"
+                  placeholder="Jane Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700">Email</label>
+                <input
+                  required
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="mt-1 text-sm rounded-md border border-slate-300 px-2 py-1.5"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-1.5">
+                <input
+                  type="checkbox"
+                  checked={newIsAdmin}
+                  onChange={(e) => setNewIsAdmin(e.target.checked)}
+                />
+                Make them an admin
+              </label>
+              <button
+                disabled={adding}
+                className="text-sm px-3 py-1.5 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+              >
+                {adding ? 'Adding…' : 'Add'}
+              </button>
+              {addError && <p className="w-full text-xs text-red-600">{addError}</p>}
+              {addedMsg && <p className="w-full text-xs text-emerald-600">{addedMsg}</p>}
+              <p className="w-full text-xs text-slate-400">
+                They can sign in right away from the front door with this email + the shared
+                mentor/admin code — no invite email needed.
+              </p>
+            </form>
+          )}
+        </div>
+      )}
 
       {converts === null && <p className="text-slate-500">Loading…</p>}
       {converts?.length === 0 && (

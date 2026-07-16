@@ -25,13 +25,12 @@ export function lessonEmailHtml(opts: {
   dayNumber: number
   title: string
   duration: string
-  url: string
   watchLink: string
   nudge?: string
 }) {
-  // The big button takes them straight into the app, where the video plays
-  // embedded on the page. The WVBS link is just a small fallback underneath
-  // in case the embed doesn't load for someone.
+  // Only one way in: the in-app link. No external "open on WVBS instead"
+  // exit - that was a back door around the app's progress tracking, and
+  // the embed already works fine on its own.
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
       <h2>Day ${opts.dayNumber} of 40</h2>
@@ -39,7 +38,6 @@ export function lessonEmailHtml(opts: {
       <h3>${opts.title} <span style="font-weight:normal;color:#666;">(${opts.duration})</span></h3>
       ${opts.nudge ?? ''}
       <p><a href="${opts.watchLink}" style="display:inline-block;background:#48688a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">Watch today's lesson</a></p>
-      <p style="font-size:12px;color:#888;"><a href="${opts.url}" style="color:#888;">Trouble watching? Open on WVBS instead</a></p>
     </div>
   `
 }

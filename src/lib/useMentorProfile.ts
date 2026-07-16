@@ -6,7 +6,6 @@ export interface MentorProfile {
   id: string
   name: string | null
   email: string | null
-  phone: string | null
   is_admin: boolean
 }
 
@@ -24,7 +23,7 @@ export function useMentorProfile(session: Session | null) {
     setLoading(true)
     supabase
       .from('mentors')
-      .select('id, name, email, phone, is_admin')
+      .select('id, name, email, is_admin')
       .eq('auth_user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {

@@ -7,7 +7,6 @@ interface ConvertRow {
   id: string
   name: string
   email: string
-  phone: string | null
   start_date: string
   active: boolean
 }
@@ -27,7 +26,7 @@ export default function MentorDashboard() {
   async function load() {
     const { data: convertRows } = await supabase
       .from('converts')
-      .select('id, name, email, phone, start_date, active')
+      .select('id, name, email, start_date, active')
       .order('created_at', { ascending: false })
 
     if (!convertRows) {

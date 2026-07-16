@@ -5,14 +5,14 @@ import { useSession } from '../lib/useSession'
 import { useMentorProfile } from '../lib/useMentorProfile'
 
 /**
- * Fallback sign-in for brand-new mentors (whose phone number isn't in the
- * system yet) and anyone who'd rather not use the phone front door. Actual
- * post-login routing/mentor-row creation happens once, centrally, in
- * App.tsx's useAuthBootstrap - this page only has to send the email.
+ * One-time account creation for brand-new mentors (whoever isn't in the
+ * `mentors` table yet). Actual post-login routing/mentor-row creation
+ * happens once, centrally, in App.tsx's useAuthBootstrap - this page only
+ * has to send the email. After this, they use the front door (email +
+ * shared code) like everyone else.
  */
 export default function MentorLogin() {
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,7 +28,6 @@ export default function MentorLogin() {
     e.preventDefault()
     setError(null)
     localStorage.setItem('pending_mentor_name', name)
-    localStorage.setItem('pending_mentor_phone', phone)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin + '/' },
@@ -59,18 +58,6 @@ export default function MentorLogin() {
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
             placeholder="Jane Doe"
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Your phone number</label>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-            placeholder="(555) 555-0100"
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Saved so you can use the phone-number sign-in next time.
-          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700">Your email</label>

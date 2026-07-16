@@ -1,8 +1,11 @@
 // Supabase Edge Function: identify-role
 //
-// The app's "front door": someone types in a phone number, and this function
-// figures out whether it belongs to an admin, a mentor, or a convert already
-// in the program.
+// The app's "front door": someone types in their email address, and this
+// function figures out whether it belongs to an admin, a mentor, or a
+// convert already in the program. (Phone numbers used to be the lookup key
+// here, but nothing ever actually used them - no SMS/Twilio was ever wired
+// up - so email does the same job with one less field to collect. See
+// supabase/migrations/0006_drop_phone.sql.)
 //
 // - admin / mentor -> must also supply the shared MENTOR_SIGN_IN_CODE (a PIN
 //                     the admin hands out verbally to every mentor - see
@@ -12,11 +15,11 @@
 //                     tokens straight back - so the browser can sign them in
 //                     immediately with zero email step. If the code is
 //                     missing/wrong, we say so without ever revealing
-//                     whether the phone number actually belongs to a mentor.
-// - convert        -> no code, no email - the response hands back their
-//                     access token directly so the app can redirect them
-//                     straight into /watch/<token>, same as clicking the
-//                     link in their daily email. Converts can only ever
+//                     whether the email actually belongs to a mentor.
+// - convert        -> no code, no email round-trip - the response hands back
+//                     their access token directly so the app can redirect
+//                     them straight into /watch/<token>, same as clicking
+//                     the link in their daily email. Converts can only ever
 //                     mark videos watched with that token, so there's
 //                     nothing gained by making them wait on anything.
 // - not found      -> { found: false } (mentor needs to add them first)
@@ -25,12 +28,13 @@
 // (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are automatic.)
 //
 // NOTE ON THE SECURITY TRADE-OFF: a shared code known to every mentor means
-// anyone who has that code AND knows (or guesses) a mentor's phone number
-// can sign in as that mentor - there's no per-person proof of identity
-// anymore, unlike the old magic-link flow. That's the trade this screen is
-// built for: less friction for a small, trusted group of mentors, at the
-// cost of real per-person verification. If that stops being an acceptable
-// trade, the natural upgrade is a real SMS one-time code (needs Twilio).
+// anyone who has that code AND knows a mentor's email address can sign in
+// as that mentor - there's no per-person proof of identity anymore, unlike
+// the old magic-link flow. That's the trade this screen is built for: less
+// friction for a small, trusted group of mentors, at the cost of real
+// per-person verification. If that stops being an acceptable trade, the
+// natural upgrade is a real one-time code sent to that person (email OTP
+// they actually have to receive, or SMS via Twilio) instead of a shared PIN.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleCorsPreflight } from '../_shared/cors.ts'
@@ -45,8 +49,8 @@ const supabaseAnon = createClient(
 )
 const MENTOR_SIGN_IN_CODE = Deno.env.get('MENTOR_SIGN_IN_CODE') ?? ''
 
-function digitsOnly(phone: string) {
-  return (phone ?? '').replace(/\D/g, '')
+function normalizeEmail(email: string) {
+  return (email ?? '').trim().toLowerCase()
 }
 
 Deno.serve(async (req) => {
@@ -54,23 +58,23 @@ Deno.serve(async (req) => {
   if (preflight) return preflight
 
   try {
-    const { phone, code } = await req.json()
-    const digits = digitsOnly(phone)
-    if (digits.length < 7) {
-      return json({ found: false, reason: 'invalid_phone' })
+    const { email, code } = await req.json()
+    const normalized = normalizeEmail(email)
+    if (!normalized.includes('@')) {
+      return json({ found: false, reason: 'invalid_email' })
     }
 
     // 1. Admin or mentor?
     const { data: mentor } = await supabaseAdmin
       .from('mentors')
       .select('email, is_admin')
-      .eq('phone_digits', digits)
+      .eq('email_lower', normalized)
       .maybeSingle()
 
     if (mentor?.email) {
       if (!MENTOR_SIGN_IN_CODE || code !== MENTOR_SIGN_IN_CODE) {
-        // Same response whether the phone number is a mentor's or not - see
-        // the note above about not leaking who's in the mentors table.
+        // Same response whether the email is a mentor's or not - see the
+        // note above about not leaking who's in the mentors table.
         return json({ found: false, reason: 'wrong_code' })
       }
 
@@ -108,7 +112,7 @@ Deno.serve(async (req) => {
     const { data: convert } = await supabaseAdmin
       .from('converts')
       .select('access_token')
-      .eq('phone_digits', digits)
+      .eq('email_lower', normalized)
       .maybeSingle()
 
     if (convert) {

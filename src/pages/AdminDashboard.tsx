@@ -9,7 +9,6 @@ interface MentorRow {
   id: string
   name: string | null
   email: string | null
-  phone: string | null
   is_admin: boolean
 }
 
@@ -17,7 +16,6 @@ interface ConvertRow {
   id: string
   name: string
   email: string
-  phone: string | null
   start_date: string
   active: boolean
   mentor_id: string
@@ -39,8 +37,8 @@ export default function AdminDashboard() {
 
   async function load() {
     const [{ data: mentorRows }, { data: convertRows }, { data: progressRows }] = await Promise.all([
-      supabase.from('mentors').select('id, name, email, phone, is_admin').order('name'),
-      supabase.from('converts').select('id, name, email, phone, start_date, active, mentor_id').order('created_at', { ascending: false }),
+      supabase.from('mentors').select('id, name, email, is_admin').order('name'),
+      supabase.from('converts').select('id, name, email, start_date, active, mentor_id').order('created_at', { ascending: false }),
       supabase.from('progress').select('convert_id, day_number, watched_at'),
     ])
     setMentors(mentorRows ?? [])
@@ -127,9 +125,7 @@ export default function AdminDashboard() {
             <div key={m.id} className="flex items-center justify-between px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-slate-800">{m.name || '(no name)'}</p>
-                <p className="text-xs text-slate-500">
-                  {m.email} {m.phone ? `· ${m.phone}` : ''}
-                </p>
+                <p className="text-xs text-slate-500">{m.email}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -172,9 +168,7 @@ export default function AdminDashboard() {
                     <Link to={`/convert/${c.id}`} className="text-sm font-medium text-brand-700 hover:underline">
                       {c.name}
                     </Link>
-                    <p className="text-xs text-slate-500">
-                      {c.email} {c.phone ? `· ${c.phone}` : ''}
-                    </p>
+                    <p className="text-xs text-slate-500">{c.email}</p>
                     <p className="text-xs text-slate-400">
                       Mentor: {mentorName(c.mentor_id)} · Started {c.start_date} · Day {Math.min(day, 40)}/40 ·{' '}
                       {done}/41 watched

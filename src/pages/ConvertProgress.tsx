@@ -9,7 +9,6 @@ interface Convert {
   id: string
   name: string
   email: string
-  phone: string | null
   start_date: string
   active: boolean
   access_token: string
@@ -30,7 +29,7 @@ export default function ConvertProgress() {
     if (!id) return
     supabase
       .from('converts')
-      .select('id, name, email, phone, start_date, active, access_token')
+      .select('id, name, email, start_date, active, access_token')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -91,7 +90,7 @@ export default function ConvertProgress() {
         ← All converts
       </Link>
       <h1 className="text-xl font-semibold text-brand-700 mt-2">{convert.name}</h1>
-      <p className="text-sm text-slate-500">{convert.email} {convert.phone ? `· ${convert.phone}` : ''}</p>
+      <p className="text-sm text-slate-500">{convert.email}</p>
       <p className="text-sm text-slate-500">Started {convert.start_date}</p>
 
       <div className="grid grid-cols-3 gap-3 my-6">

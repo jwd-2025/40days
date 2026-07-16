@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { supabase } from './lib/supabaseClient'
 import { useSession } from './lib/useSession'
 import { useMentorProfile } from './lib/useMentorProfile'
-import PhoneEntry from './pages/PhoneEntry'
+import FrontDoor from './pages/FrontDoor'
 import MentorLogin from './pages/MentorLogin'
 import MentorDashboard from './pages/MentorDashboard'
 import AddConvert from './pages/AddConvert'
@@ -32,10 +32,11 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
 }
 
 /**
- * Runs once, app-wide, whenever a magic link finishes signing someone in -
- * regardless of whether they arrived via the phone front door or the email
- * fallback form. Makes sure a `mentors` row exists, then routes them to the
- * admin or mentor dashboard as appropriate.
+ * Runs once, app-wide, whenever someone gets signed in - whether that's via
+ * the front door's shared code (session handed back directly, see
+ * FrontDoor.tsx) or the "create your account" magic-link form (MentorLogin).
+ * Makes sure a `mentors` row exists, then routes them to the admin or
+ * mentor dashboard as appropriate.
  */
 function useAuthBootstrap() {
   const navigate = useNavigate()
@@ -43,18 +44,15 @@ function useAuthBootstrap() {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         const storedName = localStorage.getItem('pending_mentor_name') ?? ''
-        const storedPhone = localStorage.getItem('pending_mentor_phone') ?? ''
         await supabase.from('mentors').upsert(
           {
             auth_user_id: session.user.id,
             email: session.user.email,
             name: storedName || undefined,
-            phone: storedPhone || undefined,
           },
           { onConflict: 'auth_user_id', ignoreDuplicates: false },
         )
         localStorage.removeItem('pending_mentor_name')
-        localStorage.removeItem('pending_mentor_phone')
 
         const { data: mentor } = await supabase
           .from('mentors')
@@ -73,7 +71,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<PhoneEntry />} />
+      <Route path="/" element={<FrontDoor />} />
       <Route path="/email-login" element={<MentorLogin />} />
       <Route
         path="/dashboard"

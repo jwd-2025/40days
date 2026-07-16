@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabaseClient'
 
 export default function AddConvert() {
   const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +39,6 @@ export default function AddConvert() {
     const { error: insertError } = await supabase.from('converts').insert({
       mentor_id: mentor.id,
       name,
-      phone,
       email,
       start_date: startDate,
     })
@@ -59,9 +57,6 @@ export default function AddConvert() {
       <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg border border-slate-200">
         <Field label="Name">
           <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Cell phone number">
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="(555) 555-0100" />
         </Field>
         <Field label="Email (where daily videos are sent)">
           <input

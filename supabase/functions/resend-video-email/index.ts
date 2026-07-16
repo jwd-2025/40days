@@ -17,7 +17,8 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') ?? ''
+// Strip any trailing slash(es) - see send-daily-videos/index.ts for why.
+const APP_BASE_URL = (Deno.env.get('APP_BASE_URL') ?? '').replace(/\/+$/, '')
 
 Deno.serve(async (req) => {
   const preflight = handleCorsPreflight(req)

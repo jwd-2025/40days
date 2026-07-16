@@ -19,7 +19,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') ?? ''
+// Strip any trailing slash(es) - if the APP_BASE_URL secret was set with
+// one (e.g. "https://your-app.netlify.app/"), concatenating "/watch/<token>"
+// onto it would produce a double slash that the app's router won't match,
+// silently bouncing the convert back to the front door instead of their page.
+const APP_BASE_URL = (Deno.env.get('APP_BASE_URL') ?? '').replace(/\/+$/, '')
 
 Deno.serve(async (req) => {
   const preflight = handleCorsPreflight(req)

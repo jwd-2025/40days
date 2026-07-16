@@ -44,7 +44,10 @@ dashboard for the mentor.
 - The mentor's dashboard shows each convert's current day, a 🔥 streak
   count, and a red/green calendar grid — built to make missed days visible
   without being punishing, and to make daily consistency easy to see at a
-  glance.
+  glance. An admin's own `/dashboard` automatically shows *every* convert
+  across the whole program, not just their own (their extra admin read
+  access applies here too), with the owning mentor's name on each one so
+  it's clear whose is whose.
 - **Admins** (any mentor with `is_admin = true`) get a separate `/admin`
   view: add a new mentor or admin directly, every mentor and every convert
   across the whole program, the ability to promote another mentor to

@@ -11,14 +11,22 @@ interface ConvertRow {
   email: string
   start_date: string
   active: boolean
+  mentor_id: string
 }
 
 interface ConvertWithProgress extends ConvertRow {
   progress: ProgressRow[]
 }
 
+interface MentorRow {
+  id: string
+  name: string | null
+  email: string | null
+}
+
 export default function MentorDashboard() {
   const [converts, setConverts] = useState<ConvertWithProgress[] | null>(null)
+  const [mentors, setMentors] = useState<MentorRow[]>([])
   const [showAddMentor, setShowAddMentor] = useState(false)
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -54,10 +62,21 @@ export default function MentorDashboard() {
   }
 
   async function load() {
-    const { data: convertRows } = await supabase
-      .from('converts')
-      .select('id, name, email, start_date, active')
-      .order('created_at', { ascending: false })
+    // No explicit mentor_id filter here - RLS scopes a plain mentor to just
+    // their own converts, but an admin's extra "admin reads all converts"
+    // policy means this same query returns *everyone's* converts for them.
+    // That's intentional (an admin should be able to see the whole
+    // program from their own dashboard, not just their own converts), but
+    // it means we need the mentor name alongside each one so it's clear
+    // whose is whose.
+    const [{ data: convertRows }, { data: mentorRows }] = await Promise.all([
+      supabase
+        .from('converts')
+        .select('id, name, email, start_date, active, mentor_id')
+        .order('created_at', { ascending: false }),
+      supabase.from('mentors').select('id, name, email'),
+    ])
+    setMentors(mentorRows ?? [])
 
     if (!convertRows) {
       setConverts([])
@@ -75,6 +94,8 @@ export default function MentorDashboard() {
     setConverts(withProgress)
   }
 
+  const mentorName = (id: string) => mentors.find((m) => m.id === id)?.name ?? mentors.find((m) => m.id === id)?.email ?? '—'
+
   async function signOut() {
     await supabase.auth.signOut()
     navigate('/')
@@ -83,7 +104,16 @@ export default function MentorDashboard() {
   return (
     <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-brand-700">Your converts</h1>
+        <div>
+          <h1 className="text-xl font-semibold text-brand-700">
+            {profile?.is_admin ? 'All converts' : 'Your converts'}
+          </h1>
+          {profile?.is_admin && (
+            <p className="text-xs text-slate-500">
+              You're seeing everyone's, since you're an admin — mentor shown on each one below.
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           {profile?.is_admin && (
             <Link to="/admin" className="text-sm text-brand-600 hover:underline">
@@ -186,6 +216,9 @@ export default function MentorDashboard() {
                 <div>
                   <p className="font-medium text-slate-800">{c.name}</p>
                   <p className="text-xs text-slate-500">{c.email}</p>
+                  {profile?.is_admin && (
+                    <p className="text-xs text-slate-400">Mentor: {mentorName(c.mentor_id)}</p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-brand-600">

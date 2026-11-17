@@ -98,6 +98,20 @@ export default function VideoLibrary() {
 
       {videos === null && <p className="text-slate-500">Loading…</p>}
 
+      {videos && (
+        <select
+          value={selectedDay}
+          onChange={(e) => select(Number(e.target.value))}
+          className="w-full min-w-0 mb-5 text-sm border border-slate-300 rounded-md px-3 py-2 bg-white"
+        >
+          {videos.map((v) => (
+            <option key={v.day_number} value={v.day_number}>
+              Day {v.day_number}: {v.title}
+            </option>
+          ))}
+        </select>
+      )}
+
       {selected && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-brand-700">
@@ -198,26 +212,6 @@ export default function VideoLibrary() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-lg divide-y">
-        {videos?.map((v) => (
-          <button
-            key={v.day_number}
-            onClick={() => {
-              select(v.day_number)
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-            className={`w-full text-left flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-50 ${
-              v.day_number === selectedDay ? 'bg-brand-50' : ''
-            }`}
-          >
-            <span className="text-slate-800">
-              <span className="text-slate-400 mr-2">Day {v.day_number}</span>
-              {v.title}
-            </span>
-            <span className="text-xs text-slate-400">{v.duration}</span>
-          </button>
-        ))}
-      </div>
     </div>
   )
 }

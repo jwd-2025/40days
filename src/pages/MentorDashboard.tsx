@@ -105,7 +105,7 @@ export default function MentorDashboard() {
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-brand-700">
             {profile?.is_admin ? 'All converts' : 'Your converts'}
@@ -116,7 +116,7 @@ export default function MentorDashboard() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link to="/videos" className="text-sm text-brand-600 hover:underline">
             Videos
           </Link>

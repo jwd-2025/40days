@@ -139,12 +139,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-brand-700">Admin</h1>
           <p className="text-xs text-slate-500">Every mentor and every convert, across the whole program.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link to="/videos" className="text-sm text-brand-600 hover:underline">
             Videos
           </Link>

@@ -120,11 +120,11 @@ export default function ConvertProgress() {
         <p className="text-xs text-slate-500 mb-3">
           Use this if they say they never got an email, or if a start date got fixed after the fact.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <select
             value={resendDay}
             onChange={(e) => setResendDay(Number(e.target.value))}
-            className="text-sm border border-slate-300 rounded px-2 py-1"
+            className="text-sm border border-slate-300 rounded px-2 py-1 w-full sm:w-auto sm:flex-1 min-w-0"
           >
             {VIDEOS.map((v) => (
               <option key={v.day} value={v.day}>
@@ -135,7 +135,7 @@ export default function ConvertProgress() {
           <button
             onClick={handleResend}
             disabled={resending}
-            className="text-sm px-3 py-1.5 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+            className="text-sm px-3 py-1.5 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 w-full sm:w-auto"
           >
             {resending ? 'Sending…' : 'Resend'}
           </button>

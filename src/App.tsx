@@ -7,6 +7,7 @@ import AddConvert from './pages/AddConvert'
 import ConvertProgress from './pages/ConvertProgress'
 import ConvertView from './pages/ConvertView'
 import AdminDashboard from './pages/AdminDashboard'
+import VideoLibrary from './pages/VideoLibrary'
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center text-slate-500">{children}</div>
@@ -66,6 +67,14 @@ export default function App() {
         element={
           <RequireMentor>
             <ConvertProgress />
+          </RequireMentor>
+        }
+      />
+      <Route
+        path="/videos"
+        element={
+          <RequireMentor>
+            <VideoLibrary />
           </RequireMentor>
         }
       />

@@ -117,6 +117,9 @@ export default function MentorDashboard() {
           )}
         </div>
         <div className="flex items-center gap-4">
+          <Link to="/videos" className="text-sm text-brand-600 hover:underline">
+            Videos
+          </Link>
           {profile?.is_admin && (
             <Link to="/admin" className="text-sm text-brand-600 hover:underline">
               Full admin tools

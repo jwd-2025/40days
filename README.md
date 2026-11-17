@@ -143,7 +143,7 @@ below the video still reflects their actual progress either way.
    then `0002_cron.sql` (after step 7 below), then
    `0003_admin_and_phone_lookup.sql`, then `0004_free_video_source.sql`,
    then `0005_delete_convert.sql`, then `0006_drop_phone.sql`, then
-   `0007_fix_day_timezone_mismatch.sql`, then `0008_last_seen.sql`.
+   `0007_fix_day_timezone_mismatch.sql`, then `0008_last_seen.sql`, then `0009_admin_edit_videos.sql` (lets admins edit video titles/links from the /videos page).
    `0001` creates the tables, security rules, and seeds the 41 videos;
    `0003` adds the admin flag (its phone-lookup columns get removed again
    by `0006` below, but running it in order keeps the migration history

@@ -145,6 +145,9 @@ export default function AdminDashboard() {
           <p className="text-xs text-slate-500">Every mentor and every convert, across the whole program.</p>
         </div>
         <div className="flex items-center gap-4">
+          <Link to="/videos" className="text-sm text-brand-600 hover:underline">
+            Videos
+          </Link>
           <Link to="/dashboard" className="text-sm text-brand-600 hover:underline">
             My dashboard
           </Link>
